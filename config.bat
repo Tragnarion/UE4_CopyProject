@@ -1,0 +1,1 @@
+pyi-makespec --icon=icon.ico -F --name=copyproject copyproject\__init__.py
