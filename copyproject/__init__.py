@@ -12,7 +12,7 @@ import argparse
 import shutil
 import fileinput
 
-__version__ = '0.1'
+__version__ = '0.2'
 __author__ = 'Moritz Wundke'
 
 # Source files
@@ -101,6 +101,10 @@ def create_project(template, target, copyright):
     template_base = os.path.basename(template).replace('Game','')
     target_base = os.path.basename(target).replace('Game','')
 
+    if template_base in target_base:
+        print_error("The target game can not contain the base name of the source game (basename: %s, target basename: %s)" % (template_base, target_base))
+        return False
+
     replace_map = {
         template_base:target_base
         , template_base.lower():target_base.lower()
@@ -112,6 +116,26 @@ def create_project(template, target, copyright):
         replace_map['// Copyright 1998-2014 Epic Games, Inc. All Rights Reserved.'] = copyright
     copytree(template, target, template_base, target_base, replace_map)
 
+def source_valid(source_path):
+    """
+    Check if a sourcepath is valid or not
+    """
+    # Path must exists
+    if not os.path.isdir(source_path):
+        print_error("Source path is not an directory!")
+        return False
+
+    # Check for valid uproject file
+    uproject_file ="%s.uproject" % os.path.basename(source_path)
+    if not os.path.exists(os.path.join(source_path, uproject_file)):
+        print_error("Can not find uproject file! ('%s' does not exist)" % os.path.join(source_path, uproject_file))
+        if os.path.isdir(os.path.join(source_path, 'data')) and os.path.isdir(os.path.join(source_path, 'data', 'Content')):
+            print_error("It seams that you are using a downloaded template and you missed to create a project from it. Please use a valid project as a target source folder.")
+        return False
+
+    # Seams legit!
+    return True
+
 def main():
     parser = argparse.ArgumentParser(description='UE4 project creator (%s). Tragnarion Studios - by %s' % (__version__, __author__))
 
@@ -122,7 +146,11 @@ def main():
     parser.add_argument('-c','--copyright', help='Copyright to be used to replaced with', default='// Copyright 2014 <CopyrightHolderHere> All Rights Reserved.')
     args = parser.parse_args()
 
-    if not os.path.isdir(args.source) or not os.path.exists(os.path.join(args.source, "%s.uproject" % os.path.basename(args.source))):
+    # Make sure both pathes are absolute!
+    args.source = os.path.abspath(args.source)
+    args.target = os.path.abspath(args.target)
+
+    if not source_valid(args.source):
         print_error("Source path must be avalid UE4 project!")
         parser.print_help()
         sys.exit(2)
